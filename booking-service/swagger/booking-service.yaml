@@ -1,0 +1,336 @@
+openapi: "3.0.3"
+info:
+  title: Booking Service API
+  description: Микросервис бронирования ресурсов отелей
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8081
+    description: Локальная разработка
+
+paths:
+  /health:
+    get:
+      summary: Проверка состояния сервиса
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        "200":
+          description: Сервис работает
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+
+  /api/bookings/create:
+    post:
+      summary: Создание бронирования
+      operationId: createBooking
+      tags:
+        - Bookings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "201":
+          description: Бронирование создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateBookingResponse"
+        "400":
+          description: Ошибка валидации
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/bookings/by-filter:
+    post:
+      summary: Получение бронирований с фильтром и пагинацией
+      operationId: getBookingsByFilter
+      tags:
+        - Bookings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetBookingsByFilterRequest"
+      responses:
+        "200":
+          description: Список бронирований
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedBookingResponse"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/bookings/{id}:
+    get:
+      summary: Получение бронирования по ID
+      operationId: getBookingById
+      tags:
+        - Bookings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Информация о бронировании
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "404":
+          description: Бронирование не найдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/bookings/{id}/cancel:
+    put:
+      summary: Отмена бронирования
+      operationId: cancelBooking
+      tags:
+        - Bookings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: Бронирование отменено
+        "404":
+          description: Бронирование не найдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: Недопустимый переход статуса
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/bookings/{id}/status:
+    get:
+      summary: Получение статуса бронирования по ID
+      operationId: getBookingStatus
+      tags:
+        - Bookings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Статус бронирования
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingStatusResponse"
+        "404":
+          description: Бронирование не найдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+components:
+  schemas:
+    CreateBookingRequest:
+      type: object
+      required:
+        - userId
+        - resourceId
+        - startDate
+        - endDate
+      properties:
+        userId:
+          type: integer
+          format: int64
+          description: Идентификатор пользователя
+          example: 1
+        resourceId:
+          type: integer
+          format: int64
+          description: Идентификатор ресурса
+          example: 10
+        startDate:
+          type: string
+          format: date
+          description: Дата начала бронирования (YYYY-MM-DD)
+          example: "2026-04-01"
+        endDate:
+          type: string
+          format: date
+          description: Дата окончания бронирования (YYYY-MM-DD)
+          example: "2026-04-07"
+
+    CreateBookingResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Идентификатор созданного бронирования
+          example: 42
+
+    BookingResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42
+        status:
+          type: string
+          enum:
+            - awaits_confirmation
+            - confirmed
+            - cancelled
+          example: awaits_confirmation
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        resourceId:
+          type: integer
+          format: int64
+          example: 10
+        startDate:
+          type: string
+          format: date
+          example: "2026-04-01"
+        endDate:
+          type: string
+          format: date
+          example: "2026-04-07"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-03-10T12:00:00Z"
+
+    BookingStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - awaits_confirmation
+            - confirmed
+            - cancelled
+          example: confirmed
+
+    GetBookingsByFilterRequest:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        resourceId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 10
+        status:
+          type: string
+          nullable: true
+          enum:
+            - awaits_confirmation
+            - confirmed
+            - cancelled
+        page:
+          type: integer
+          default: 1
+          example: 1
+        size:
+          type: integer
+          default: 25
+          example: 25
+
+    PagedBookingResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookingResponse"
+        totalCount:
+          type: integer
+          format: int64
+          example: 100
+        page:
+          type: integer
+          example: 1
+        size:
+          type: integer
+          example: 25
+
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Бронирование не найдено
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          example: бронирование не найдено
