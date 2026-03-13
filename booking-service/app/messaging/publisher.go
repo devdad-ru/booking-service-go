@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.uber.org/zap"
-
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.uber.org/zap"
 )
 
 // Publisher публикует сообщения в RabbitMQ.

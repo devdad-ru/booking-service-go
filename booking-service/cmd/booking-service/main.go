@@ -31,7 +31,7 @@ func main() {
 	}
 
 	logger := setupLogger(cfg.App.LogLevel)
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 	zap.ReplaceGlobals(logger)
 
 	logger.Info("запуск сервиса",

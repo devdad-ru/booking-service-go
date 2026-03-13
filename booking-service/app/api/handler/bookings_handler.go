@@ -7,12 +7,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
 	"booking-service/app/api/dto"
 	"booking-service/app/models"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // BookingService определяет командные операции с бронированиями.

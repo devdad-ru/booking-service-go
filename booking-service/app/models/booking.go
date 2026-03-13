@@ -91,6 +91,8 @@ func (b *Booking) Cancel(today time.Time) error {
 		}
 		b.status = BookingStatusCancelled
 		return nil
+	case BookingStatusCancelled:
+		return ErrInvalidStatusTransition
 	default:
 		return ErrInvalidStatusTransition
 	}

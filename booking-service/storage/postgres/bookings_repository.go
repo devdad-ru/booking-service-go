@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"booking-service/app/models"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"booking-service/app/models"
 )
 
 // BookingsRepository реализует models.BookingRepository.

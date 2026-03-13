@@ -3,9 +3,8 @@ package messaging
 import (
 	"fmt"
 
-	"go.uber.org/zap"
-
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.uber.org/zap"
 )
 
 // Connection управляет соединением с RabbitMQ.

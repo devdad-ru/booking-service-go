@@ -4,9 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"go.uber.org/zap"
-
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 )
 
 // RequestLogger логирует входящие HTTP-запросы.

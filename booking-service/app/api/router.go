@@ -1,11 +1,11 @@
 package api
 
 import (
-	"booking-service/app/api/handler"
-	mw "booking-service/app/api/middleware"
-
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+
+	"booking-service/app/api/handler"
+	mw "booking-service/app/api/middleware"
 )
 
 // NewRouter создаёт и настраивает chi-роутер.

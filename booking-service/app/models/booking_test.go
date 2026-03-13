@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"booking-service/app/models"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"booking-service/app/models"
 )
 
 func TestNewBooking_Success(t *testing.T) {

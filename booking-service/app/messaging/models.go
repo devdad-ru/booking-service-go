@@ -69,7 +69,7 @@ func NewMessageID() string {
 }
 
 // BookingIDToRequestID кодирует bookingID в детерминированный UUID.
-// Формат: 00000000-0000-0000-0000-{id:012x}
+// Формат: 00000000-0000-0000-0000-{id:012x}.
 func BookingIDToRequestID(id int64) string {
 	return fmt.Sprintf("00000000-0000-0000-0000-%012x", id)
 }
