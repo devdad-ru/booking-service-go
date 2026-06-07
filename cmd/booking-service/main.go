@@ -125,7 +125,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("завершение работы сервиса..")
+	logger.Info("завершение работы сервиса")
 
 	cancel()
 
