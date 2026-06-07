@@ -56,6 +56,8 @@ func (r *BookingsRepository) GetByID(ctx context.Context, id int64) (*models.Boo
 func (r *BookingsRepository) Update(ctx context.Context, booking *models.Booking) error {
 	tag, err := r.pool.Exec(ctx, queryUpdateBookingStatus,
 		string(booking.Status()),
+		string(booking.PrevStatus()),
+		booking.CanceledAt(),
 		booking.ID(),
 	)
 	if err != nil {
@@ -145,14 +147,26 @@ func (r *BookingsRepository) scanBooking(row pgx.Row) (*models.Booking, error) {
 		startDate  time.Time
 		endDate    time.Time
 		createdAt  time.Time
+		prevStatus *string
+		canceledAt *time.Time
 	)
 
-	err := row.Scan(&id, &status, &userID, &resourceID, &startDate, &endDate, &createdAt)
+	err := row.Scan(&id, &status, &userID, &resourceID, &startDate, &endDate, &createdAt, &prevStatus, &canceledAt)
 	if err != nil {
 		return nil, err
 	}
 
-	return models.RestoreBooking(id, models.BookingStatus(status), userID, resourceID, startDate, endDate, createdAt), nil
+	var pStatus string
+	if prevStatus != nil {
+		pStatus = *prevStatus
+	}
+
+	var cTime time.Time
+	if canceledAt != nil {
+		cTime = *canceledAt
+	}
+
+	return models.RestoreBooking(id, models.BookingStatus(status), models.BookingStatus(pStatus), userID, resourceID, startDate, endDate, createdAt, cTime), nil
 }
 
 // scanBookingFromRows сканирует строку из pgx.Rows.
@@ -165,12 +179,24 @@ func (r *BookingsRepository) scanBookingFromRows(rows pgx.Rows) (*models.Booking
 		startDate  time.Time
 		endDate    time.Time
 		createdAt  time.Time
+		prevStatus *string
+		canceledAt *time.Time
 	)
 
-	err := rows.Scan(&id, &status, &userID, &resourceID, &startDate, &endDate, &createdAt)
+	err := rows.Scan(&id, &status, &userID, &resourceID, &startDate, &endDate, &createdAt, &prevStatus, &canceledAt)
 	if err != nil {
 		return nil, err
 	}
 
-	return models.RestoreBooking(id, models.BookingStatus(status), userID, resourceID, startDate, endDate, createdAt), nil
+	var pStatus string
+	if prevStatus != nil {
+		pStatus = *prevStatus
+	}
+
+	var cTime time.Time
+	if canceledAt != nil {
+		cTime = *canceledAt
+	}
+
+	return models.RestoreBooking(id, models.BookingStatus(status), models.BookingStatus(pStatus), userID, resourceID, startDate, endDate, createdAt, cTime), nil
 }

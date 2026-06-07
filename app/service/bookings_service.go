@@ -93,7 +93,7 @@ func (s *BookingsService) Cancel(ctx context.Context, id int64) error {
 		return err
 	}
 
-	if err := booking.Cancel(time.Now()); err != nil {
+	if err := booking.StartCancellation(time.Now()); err != nil {
 		return err
 	}
 
@@ -114,22 +114,59 @@ func (s *BookingsService) Cancel(ctx context.Context, id int64) error {
 }
 
 // Confirm подтверждает бронирование по ID.
-// Используется обработчиком событий RabbitMQ.
 func (s *BookingsService) Confirm(ctx context.Context, id int64) error {
 	booking, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	if err := booking.Confirm(); err != nil {
-		return err
+	if booking.Status() == models.BookingStatusCancellationPending {
+		if err := booking.ConfirmCancellation(); err != nil {
+			return err
+		}
+	} else {
+		if err := booking.Confirm(); err != nil {
+			return err
+		}
 	}
-
 	if err := s.repo.Update(ctx, booking); err != nil {
 		return fmt.Errorf("обновление бронирования: %w", err)
 	}
+	s.logger.Info("обработка подтверждения от Catalog успешно завершена", zap.Int64("id", id), zap.String("status", string(booking.Status())))
+	return nil
+}
 
-	s.logger.Info("бронирование подтверждено", zap.Int64("id", id))
+func (s *BookingsService) HandleCancelError(ctx context.Context, requestID string) error {
+	bookingID, err := messaging.RequestIDToBookingID(requestID)
+	if err != nil {
+		return fmt.Errorf("парсинг requestID для отката: %w", err)
+	}
 
+	booking, err := s.repo.GetByID(ctx, bookingID)
+	if err != nil {
+		return err
+	}
+	if err := booking.RollbackCancellation(); err != nil {
+		return err
+	}
+	if err := s.repo.Update(ctx, booking); err != nil {
+		return fmt.Errorf("откат отмены бронирования в БД id=%d: %w", bookingID, err)
+	}
+
+	s.logger.Info("отмена бронирования откатана назад", zap.Int64("id", bookingID))
+	return nil
+}
+
+func (s *BookingsService) ConfirmCancellation(ctx context.Context, id int64) error {
+	booking, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := booking.ConfirmCancellation(); err != nil {
+		return err
+	}
+	if err := s.repo.Update(ctx, booking); err != nil {
+		return fmt.Errorf("подтверждение отмены бронирования в БД id=%d: %w", id, err)
+	}
+	s.logger.Info("отмена бронирования успешно подтверждена", zap.Int64("id", id))
 	return nil
 }
