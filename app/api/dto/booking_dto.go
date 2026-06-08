@@ -53,6 +53,24 @@ type ProblemDetails struct {
 	Status int    `json:"status"`
 	Detail string `json:"detail,omitempty"`
 }
+// BookingStatisticsResponse -- агрегированная статистика по бронированиям.
+type BookingStatisticsResponse struct {
+	TotalCount   int64               `json:"totalCount"`
+	ByStatus     []StatusCountItem   `json:"byStatus"`
+	TopResources []ResourceCountItem `json:"topResources"`
+}
+
+// StatusCountItem -- количество бронирований по статусу.
+type StatusCountItem struct {
+	Status string `json:"status"`
+	Count  int64  `json:"count"`
+}
+
+// ResourceCountItem -- количество бронирований по ресурсу.
+type ResourceCountItem struct {
+	ResourceID int64 `json:"resourceId"`
+	Count      int64 `json:"count"`
+}
 
 // DateFormat -- формат даты для JSON-сериализации.
 const DateFormat = "2006-01-02"

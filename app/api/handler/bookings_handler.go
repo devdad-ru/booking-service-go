@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -25,6 +26,7 @@ type BookingQueries interface {
 	GetByID(ctx context.Context, id int64) (dto.BookingResponse, error)
 	GetByFilter(ctx context.Context, req dto.GetBookingsByFilterRequest) (dto.PagedResponse[dto.BookingResponse], error)
 	GetStatus(ctx context.Context, id int64) (models.BookingStatus, error)
+	GetStatistics(ctx context.Context, dateFrom, dateTo time.Time) (dto.BookingStatisticsResponse, error)
 }
 
 // BookingsHandler содержит обработчики HTTP-запросов для бронирований.
@@ -110,6 +112,23 @@ func (h *BookingsHandler) GetByFilter(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+// Statistics обрабатывает GET /api/bookings/statistics.
+func (h *BookingsHandler) Statistics(w http.ResponseWriter, r *http.Request) {
+	dateFrom, dateTo, err := parseStatisticsDateRange(r)
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	result, err := h.queries.GetStatistics(r.Context(), dateFrom, dateTo)
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
 // GetStatus обрабатывает GET /api/bookings/{id}/status.
 func (h *BookingsHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDParam(r)
@@ -139,7 +158,9 @@ func (h *BookingsHandler) handleServiceError(w http.ResponseWriter, err error) {
 	case errors.Is(err, models.ErrInvalidUserID),
 		errors.Is(err, models.ErrInvalidResourceID),
 		errors.Is(err, models.ErrInvalidDateRange),
-		errors.Is(err, models.ErrEndDateBeforeStartDate):
+		errors.Is(err, models.ErrEndDateBeforeStartDate),
+		errors.Is(err, models.ErrMissingStatisticsParams),
+		errors.Is(err, models.ErrInvalidStatisticsDate):
 		writeProblemDetails(w, http.StatusBadRequest, "Ошибка валидации", err.Error())
 	default:
 		h.logger.Error("необработанная ошибка", zap.Error(err))
@@ -152,6 +173,30 @@ func (h *BookingsHandler) handleServiceError(w http.ResponseWriter, err error) {
 func parseIDParam(r *http.Request) (int64, error) {
 	idStr := chi.URLParam(r, "id")
 	return strconv.ParseInt(idStr, 10, 64)
+}
+
+func parseStatisticsDateRange(r *http.Request) (time.Time, time.Time, error) {
+	dateFromStr := r.URL.Query().Get("dateFrom")
+	dateToStr := r.URL.Query().Get("dateTo")
+	if dateFromStr == "" || dateToStr == "" {
+		return time.Time{}, time.Time{}, models.ErrMissingStatisticsParams
+	}
+
+	dateFrom, err := time.Parse(dto.DateFormat, dateFromStr)
+	if err != nil {
+		return time.Time{}, time.Time{}, models.ErrInvalidStatisticsDate
+	}
+
+	dateTo, err := time.Parse(dto.DateFormat, dateToStr)
+	if err != nil {
+		return time.Time{}, time.Time{}, models.ErrInvalidStatisticsDate
+	}
+
+	if dateTo.Before(dateFrom) {
+		return time.Time{}, time.Time{}, models.ErrEndDateBeforeStartDate
+	}
+
+	return dateFrom, dateTo, nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any) {

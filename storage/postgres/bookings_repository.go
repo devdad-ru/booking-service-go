@@ -147,6 +147,54 @@ func (r *BookingsRepository) GetAwaitingConfirmation(ctx context.Context, limit 
 
 	return bookings, rows.Err()
 }
+func (r *BookingsRepository) GetStatistics(ctx context.Context, dateFrom, dateToExclusive time.Time) (*models.StatisticsData, error) {
+	var count int64
+	if err := r.pool.QueryRow(ctx, queryCountBooking, dateFrom, dateToExclusive).Scan(&count); err != nil {
+		return nil, fmt.Errorf("получение количества бронирований за период: %w", err)
+	}
+
+	rowsByStatus, err := r.pool.Query(ctx, queryByStatus, dateFrom, dateToExclusive)
+	if err != nil {
+		return nil, fmt.Errorf("получение разбивки по статусам: %w", err)
+	}
+	defer rowsByStatus.Close()
+
+	var byStatus []models.StatusCount
+	for rowsByStatus.Next() {
+		item, err := scanStatusCount(rowsByStatus.Scan)
+		if err != nil {
+			return nil, fmt.Errorf("сканирование статусов: %w", err)
+		}
+		byStatus = append(byStatus, *item)
+	}
+	if err := rowsByStatus.Err(); err != nil {
+		return nil, fmt.Errorf("итерация по статусам: %w", err)
+	}
+
+	rowsTopResources, err := r.pool.Query(ctx, queryTop5Resources, dateFrom, dateToExclusive)
+	if err != nil {
+		return nil, fmt.Errorf("получение топ ресурсов: %w", err)
+	}
+	defer rowsTopResources.Close()
+
+	var topResources []models.ResourceCount
+	for rowsTopResources.Next() {
+		item, err := scanResourceCount(rowsTopResources.Scan)
+		if err != nil {
+			return nil, fmt.Errorf("сканирование топ ресурсов: %w", err)
+		}
+		topResources = append(topResources, *item)
+	}
+	if err := rowsTopResources.Err(); err != nil {
+		return nil, fmt.Errorf("итерация по топ ресурсам: %w", err)
+	}
+
+	return &models.StatisticsData{
+		TotalCount:   count,
+		ByStatus:     byStatus,
+		TopResources: topResources,
+	}, nil
+}
 
 // scanBooking сканирует одну строку в доменный объект Booking.
 func (r *BookingsRepository) scanBooking(row pgx.Row) (*models.Booking, error) {
@@ -156,6 +204,37 @@ func (r *BookingsRepository) scanBooking(row pgx.Row) (*models.Booking, error) {
 // scanBookingFromRows сканирует строку из pgx.Rows.
 func (r *BookingsRepository) scanBookingFromRows(rows pgx.Rows) (*models.Booking, error) {
 	return scanBookingFields(rows.Scan)
+}
+func scanStatusCount(scan func(dest ...any) error) (*models.StatusCount, error) {
+	var (
+		status string
+		count  int64
+	)
+
+	if err := scan(&status, &count); err != nil {
+		return nil, err
+	}
+
+	return &models.StatusCount{
+		Status: models.BookingStatus(status),
+		Count:  count,
+	}, nil
+}
+
+func scanResourceCount(scan func(dest ...any) error) (*models.ResourceCount, error) {
+	var (
+		resourceID int64
+		count      int64
+	)
+
+	if err := scan(&resourceID, &count); err != nil {
+		return nil, err
+	}
+
+	return &models.ResourceCount{
+		ResourceID: resourceID,
+		Count:      count,
+	}, nil
 }
 
 func scanBookingFields(scan func(dest ...any) error) (*models.Booking, error) {

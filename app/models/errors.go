@@ -10,4 +10,6 @@ var (
 	ErrInvalidDateRange        = errors.New("некорректный диапазон дат")
 	ErrEndDateBeforeStartDate  = errors.New("дата окончания раньше даты начала")
 	ErrBookingNotFound         = errors.New("бронирование не найдено")
+	ErrMissingStatisticsParams = errors.New("dateFrom и dateTo обязательны")
+	ErrInvalidStatisticsDate   = errors.New("некорректный формат даты")
 )
