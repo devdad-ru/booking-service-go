@@ -1,6 +1,7 @@
 package main
 
 import (
+	"booking-service/app/worker"
 	"context"
 	"errors"
 	"fmt"
@@ -77,7 +78,8 @@ func main() {
 	_ = catalogClient
 
 	// Хендлеры событий RabbitMQ
-	confirmedHandler := handlers.NewBookingConfirmedHandler(bookingsService, logger)
+
+	confirmedHandler := handlers.NewBookingConfirmedHandler(bookingsService, bookingsQueries, logger)
 	deniedHandler := handlers.NewBookingDeniedHandler(bookingsService, logger)
 	cancelledHandler := handlers.NewBookingCancelledHandler(bookingsService, logger)
 	cancelErrorHandler := handlers.NewCancelBookingErrorHandler(bookingsService, logger)
@@ -97,7 +99,15 @@ func main() {
 		logger.Error("не удалось запустить consumer", zap.Error(err))
 		os.Exit(1)
 	}
-
+	cancellationRetryWorker := worker.NewCancellationRetryWorker(
+		repo,
+		publisher,
+		cfg.Worker.CancellationRetryInterval,
+		cfg.Worker.CancellationRetryTimeout,
+		cfg.Worker.CancellationRetryBatch,
+		logger,
+	)
+	go cancellationRetryWorker.Run(ctx)
 	// HTTP-хендлеры и роутер
 	bookingsHandler := handler.NewBookingsHandler(bookingsService, bookingsQueries, logger)
 	router := api.NewRouter(bookingsHandler)

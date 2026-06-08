@@ -195,6 +195,7 @@ func (s *BookingsService) Confirm(ctx context.Context, id int64) error {
 	}
 
 	if err := booking.Confirm(); err != nil {
+		s.logger.Warn(fmt.Sprintf("Обнаружен Race condition: %v", err))
 		return err
 	}
 

@@ -67,4 +67,12 @@ const (
 	GROUP BY resource_id
 	ORDER BY count DESC, resource_id ASC
 	LIMIT 5`
+
+	queryGetStuckCancellation = `
+	SELECT id, status, user_id, resource_id, previous_status, cancellation_requested_at, start_date, end_date, created_at
+	FROM bookings
+	WHERE status = 'cancellation_pending' AND cancellation_requested_at IS  NOT NULL 
+	AND cancellation_requested_at < $1
+	ORDER BY cancellation_requested_at ASC LIMIT $2
+	FOR UPDATE SKIP LOCKED`
 )

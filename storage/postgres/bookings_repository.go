@@ -196,6 +196,27 @@ func (r *BookingsRepository) GetStatistics(ctx context.Context, dateFrom, dateTo
 	}, nil
 }
 
+func (r *BookingsRepository) GetStuckCancellation(ctx context.Context, cutoff time.Time, limit int) (*[]models.Booking, error) {
+	row, err := r.pool.Query(ctx, queryGetStuckCancellation, cutoff, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка получения бронирований %w", err)
+	}
+	defer row.Close()
+
+	var bookings []models.Booking
+	for row.Next() {
+		booking, err := r.scanBookingFromRows(row)
+		if err != nil {
+			return nil, fmt.Errorf("сканирование бронирований: %w", err)
+		}
+		bookings = append(bookings, *booking)
+	}
+	if err := row.Err(); err != nil {
+		return nil, err
+	}
+	return &bookings, nil
+}
+
 // scanBooking сканирует одну строку в доменный объект Booking.
 func (r *BookingsRepository) scanBooking(row pgx.Row) (*models.Booking, error) {
 	return scanBookingFields(row.Scan)
