@@ -27,6 +27,7 @@ type BookingQueries interface {
 	GetByFilter(ctx context.Context, req dto.GetBookingsByFilterRequest) (dto.PagedResponse[dto.BookingResponse], error)
 	GetStatus(ctx context.Context, id int64) (models.BookingStatus, error)
 	GetStatistics(ctx context.Context, dateFrom, dateTo time.Time) (dto.BookingStatisticsResponse, error)
+	GetHistoryByBookingID(ctx context.Context, bookingID int64, page, size int) (dto.PagedResponse[dto.HistoryItem], error)
 }
 
 // BookingsHandler содержит обработчики HTTP-запросов для бронирований.
@@ -146,6 +147,24 @@ func (h *BookingsHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dto.BookingStatusResponse{Status: string(status)})
 }
 
+// GetHistoryByID обрабатывает GET /api/bookings/{id}/history.
+func (h *BookingsHandler) GetHistoryByID(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDParam(r)
+	if err != nil {
+		writeProblemDetails(w, http.StatusBadRequest, "Некорректный ID", err.Error())
+		return
+	}
+
+	page, size := parsePageSize(r)
+	result, err := h.queries.GetHistoryByBookingID(r.Context(), id, page, size)
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
 // handleServiceError маппит доменные ошибки на HTTP-ответы.
 func (h *BookingsHandler) handleServiceError(w http.ResponseWriter, err error) {
 	switch {
@@ -168,11 +187,27 @@ func (h *BookingsHandler) handleServiceError(w http.ResponseWriter, err error) {
 	}
 }
 
-// Вспомогательные функции
-
 func parseIDParam(r *http.Request) (int64, error) {
 	idStr := chi.URLParam(r, "id")
 	return strconv.ParseInt(idStr, 10, 64)
+}
+
+func parsePageSize(r *http.Request) (page, size int) {
+	page = 1
+	size = 25
+
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if v, err := strconv.Atoi(pageStr); err == nil && v > 0 {
+			page = v
+		}
+	}
+	if sizeStr := r.URL.Query().Get("size"); sizeStr != "" {
+		if v, err := strconv.Atoi(sizeStr); err == nil && v > 0 {
+			size = v
+		}
+	}
+
+	return page, size
 }
 
 func parseStatisticsDateRange(r *http.Request) (time.Time, time.Time, error) {

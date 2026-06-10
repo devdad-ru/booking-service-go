@@ -12,4 +12,8 @@ var (
 	ErrBookingNotFound         = errors.New("бронирование не найдено")
 	ErrMissingStatisticsParams = errors.New("dateFrom и dateTo обязательны")
 	ErrInvalidStatisticsDate   = errors.New("некорректный формат даты")
+	ErrInvalidStatus           = errors.New("невалидный статус")
+	ErrInvalidBookingID        = errors.New("невалидный id бронирования")
+	ErrInvalidInitiator        = errors.New("пустой инициатор")
+	ErrInvalidCause            = errors.New("пустая причина")
 )

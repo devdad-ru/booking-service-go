@@ -69,10 +69,29 @@ const (
 	LIMIT 5`
 
 	queryGetStuckCancellation = `
-	SELECT id, status, user_id, resource_id, previous_status, cancellation_requested_at, start_date, end_date, created_at
+	SELECT id, status, user_id, resource_id, previous_status, cancellation_requested_at,
+	       start_date, end_date, created_at
 	FROM bookings
-	WHERE status = 'cancellation_pending' AND cancellation_requested_at IS  NOT NULL 
-	AND cancellation_requested_at < $1
-	ORDER BY cancellation_requested_at ASC LIMIT $2
+	WHERE status = 'cancellation_pending'
+	  AND cancellation_requested_at IS NOT NULL
+	  AND cancellation_requested_at < $1
+	ORDER BY cancellation_requested_at ASC
+	LIMIT $2
 	FOR UPDATE SKIP LOCKED`
+
+	queryCountHistoryByBookingID = `
+	SELECT COUNT(*)
+	FROM booking_status_history
+	WHERE booking_id = $1`
+
+	queryGetHistoryByBookingID = `
+	SELECT id, status, previous_status, booking_id, initiator, cause, created_at
+	FROM booking_status_history
+	WHERE booking_id = $1
+	ORDER BY created_at DESC, id DESC
+	LIMIT $2 OFFSET $3`
+
+	queryInsertBookingStatusHistory = `
+	INSERT INTO booking_status_history (status, previous_status, booking_id, initiator, cause)
+	VALUES ($1, $2, $3, $4, $5)`
 )
