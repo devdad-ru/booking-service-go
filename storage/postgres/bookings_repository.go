@@ -161,12 +161,7 @@ func (r *BookingsRepository) scanBooking(row pgx.Row) (*models.Booking, error) {
 		pStatus = *prevStatus
 	}
 
-	var cTime time.Time
-	if canceledAt != nil {
-		cTime = *canceledAt
-	}
-
-	return models.RestoreBooking(id, models.BookingStatus(status), models.BookingStatus(pStatus), userID, resourceID, startDate, endDate, createdAt, cTime), nil
+	return models.RestoreBooking(id, models.BookingStatus(status), models.BookingStatus(pStatus), userID, resourceID, startDate, endDate, createdAt, canceledAt), nil
 }
 
 // scanBookingFromRows сканирует строку из pgx.Rows.
@@ -193,10 +188,5 @@ func (r *BookingsRepository) scanBookingFromRows(rows pgx.Rows) (*models.Booking
 		pStatus = *prevStatus
 	}
 
-	var cTime time.Time
-	if canceledAt != nil {
-		cTime = *canceledAt
-	}
-
-	return models.RestoreBooking(id, models.BookingStatus(status), models.BookingStatus(pStatus), userID, resourceID, startDate, endDate, createdAt, cTime), nil
+	return models.RestoreBooking(id, models.BookingStatus(status), models.BookingStatus(pStatus), userID, resourceID, startDate, endDate, createdAt, canceledAt), nil
 }

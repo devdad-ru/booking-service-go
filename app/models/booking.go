@@ -32,7 +32,7 @@ type Booking struct {
 	startDate  time.Time
 	endDate    time.Time
 	createdAt  time.Time
-	canceledAt time.Time
+	canceledAt *time.Time
 	prevStatus BookingStatus
 }
 
@@ -43,7 +43,7 @@ func (b *Booking) ResourceID() int64         { return b.resourceID }
 func (b *Booking) StartDate() time.Time      { return b.startDate }
 func (b *Booking) EndDate() time.Time        { return b.endDate }
 func (b *Booking) CreatedAt() time.Time      { return b.createdAt }
-func (b *Booking) CanceledAt() time.Time     { return b.canceledAt }
+func (b *Booking) CanceledAt() *time.Time    { return b.canceledAt }
 func (b *Booking) PrevStatus() BookingStatus { return b.prevStatus }
 
 // NewBooking создаёт новое бронирование в статусе AwaitsConfirmation.
@@ -68,6 +68,7 @@ func NewBooking(userID, resourceID int64, startDate, endDate time.Time) (*Bookin
 		startDate:  startDate,
 		endDate:    endDate,
 		createdAt:  time.Now(),
+		canceledAt: nil,
 	}, nil
 }
 
@@ -109,7 +110,8 @@ func RestoreBooking(
 	id int64,
 	status, prevStatus BookingStatus,
 	userID, resourceID int64,
-	startDate, endDate, createdAt, canceledAt time.Time,
+	startDate, endDate, createdAt time.Time,
+	canceledAt *time.Time,
 ) *Booking {
 	return &Booking{
 		id:         id,
@@ -129,7 +131,7 @@ func (b *Booking) StartCancellation(today time.Time) error {
 	case BookingStatusAwaitsConfirmation:
 		b.prevStatus = b.status
 		b.status = BookingStatusCancellationPending
-		b.canceledAt = today
+		b.canceledAt = &today
 		return nil
 	case BookingStatusConfirmed:
 		if !b.startDate.After(today) {
@@ -137,7 +139,7 @@ func (b *Booking) StartCancellation(today time.Time) error {
 		}
 		b.prevStatus = b.status
 		b.status = BookingStatusCancellationPending
-		b.canceledAt = today
+		b.canceledAt = &today
 		return nil
 	default:
 		return ErrInvalidStatusTransition
@@ -157,7 +159,7 @@ func (b *Booking) RollbackCancellation() error {
 	case BookingStatusCancellationPending:
 		b.status = b.prevStatus
 		b.prevStatus = ""
-		b.canceledAt = time.Time{}
+		b.canceledAt = nil
 		return nil
 	default:
 		return ErrInvalidStatusTransition
