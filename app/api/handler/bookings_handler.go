@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"booking-service/app/service"
 	"context"
 	"encoding/json"
 	"errors"
@@ -189,7 +190,13 @@ func (h *BookingsHandler) GetStatistics(w http.ResponseWriter, r *http.Request) 
 
 	stats, err := h.queries.GetStatistics(r.Context(), req)
 	if err != nil {
-		writeProblemDetails(w, http.StatusBadRequest, "Ошибка валидации", err.Error())
+		if errors.Is(err, service.ErrInvalidDateFormat) || errors.Is(err, service.ErrInvalidDateRange) {
+			writeProblemDetails(w, http.StatusBadRequest, "Ошибка валидации", err.Error())
+			return
+		}
+
+		h.logger.Error("Не удалось получить статистику бронирований", zap.Error(err))
+		writeProblemDetails(w, http.StatusInternalServerError, "Внутренняя ошибка сервера", "Произошел непредвиденный сбой на стороне сервера")
 		return
 	}
 

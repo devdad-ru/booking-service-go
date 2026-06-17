@@ -11,6 +11,11 @@ import (
 	"booking-service/app/models"
 )
 
+var (
+	ErrInvalidDateFormat = fmt.Errorf("некорректный формат даты")
+	ErrInvalidDateRange  = fmt.Errorf("dateTo не может быть раньше dateFrom")
+)
+
 // BookingsQueries обрабатывает запросы (чтение данных) для бронирований.
 type BookingsQueries struct {
 	repo        models.BookingRepository
@@ -19,11 +24,10 @@ type BookingsQueries struct {
 }
 
 // NewBookingsQueries создаёт новый BookingsQueries.
-func NewBookingsQueries(repo models.BookingRepository, logger *zap.Logger) *BookingsQueries {
-	qRepo, _ := repo.(models.BookingQueriesRepository)
+func NewBookingsQueries(repo models.BookingRepository, queriesRepo models.BookingQueriesRepository, logger *zap.Logger) *BookingsQueries {
 	return &BookingsQueries{
 		repo:        repo,
-		queriesRepo: qRepo,
+		queriesRepo: queriesRepo,
 		logger:      logger,
 	}
 }
@@ -73,7 +77,7 @@ func (q *BookingsQueries) GetByFilter(ctx context.Context, req dto.GetBookingsBy
 
 	bookings, totalCount, err := q.repo.GetByFilter(ctx, filter)
 	if err != nil {
-		return dto.PagedResponse[dto.BookingResponse]{}, fmt.Errorf("получение бронирований: %w", err)
+		return dto.PagedResponse[dto.BookingResponse]{}, fmt.Errorf("получение бронирования: %w", err)
 	}
 
 	items := make([]dto.BookingResponse, 0, len(bookings))
@@ -107,21 +111,20 @@ func (q *BookingsQueries) GetStatistics(ctx context.Context, req dto.BookingStat
 		return dto.BookingStatisticsResponse{}, fmt.Errorf("аналитический репозиторий не инициализирован")
 	}
 
-	const layout = "2006-01-02"
-	dateFrom, err := time.Parse(layout, req.DateFrom)
+	dateFrom, err := time.Parse(dto.DateFormat, req.DateFrom)
 	if err != nil {
-		return dto.BookingStatisticsResponse{}, fmt.Errorf("некорректный формат dateFrom: %w", err)
+		return dto.BookingStatisticsResponse{}, fmt.Errorf("%w: некорректный формат dateFrom", ErrInvalidDateFormat)
 	}
 
-	dateTo, err := time.Parse(layout, req.DateTo)
+	dateTo, err := time.Parse(dto.DateFormat, req.DateTo)
 	if err != nil {
-		return dto.BookingStatisticsResponse{}, fmt.Errorf("некорректный формат dateTo: %w", err)
+		return dto.BookingStatisticsResponse{}, fmt.Errorf("%w: некорректный формат dateTo", ErrInvalidDateFormat)
 	}
 
 	dateTo = dateTo.Add(24*time.Hour - time.Nanosecond)
 
 	if dateTo.Before(dateFrom) {
-		return dto.BookingStatisticsResponse{}, fmt.Errorf("dateTo не может быть раньше dateFrom")
+		return dto.BookingStatisticsResponse{}, ErrInvalidDateRange
 	}
 
 	stats, err := q.queriesRepo.GetStatistics(ctx, dateFrom, dateTo)
@@ -129,7 +132,13 @@ func (q *BookingsQueries) GetStatistics(ctx context.Context, req dto.BookingStat
 		return dto.BookingStatisticsResponse{}, fmt.Errorf("сервис статистики: %w", err)
 	}
 
-	statusCounts := make(map[string]int64)
+	statusCounts := map[string]int64{
+		string(models.BookingStatusAwaitsConfirmation):  0,
+		string(models.BookingStatusConfirmed):           0,
+		string(models.BookingStatusCancelled):           0,
+		string(models.BookingStatusCancellationPending): 0,
+	}
+
 	for status, count := range stats.StatusCounts {
 		statusCounts[string(status)] = count
 	}

@@ -65,7 +65,7 @@ func main() {
 
 	// Сервисный слой
 	bookingsService := service.NewBookingsService(repo, publisher, logger)
-	bookingsQueries := service.NewBookingsQueries(repo, logger)
+	bookingsQueries := service.NewBookingsQueries(repo, repo, logger)
 
 	// Catalog-клиент
 	catalogClient := catalog.NewClient(

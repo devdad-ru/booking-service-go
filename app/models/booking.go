@@ -157,6 +157,9 @@ func (b *Booking) ConfirmCancellation() error {
 func (b *Booking) RollbackCancellation() error {
 	switch b.status {
 	case BookingStatusCancellationPending:
+		if b.prevStatus == "" {
+			return ErrInvalidStatusTransition
+		}
 		b.status = b.prevStatus
 		b.prevStatus = ""
 		b.canceledAt = nil
