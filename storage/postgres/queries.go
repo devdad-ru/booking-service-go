@@ -39,4 +39,18 @@ const (
        	ORDER BY created_at ASC
        	LIMIT $1
        	FOR UPDATE SKIP LOCKED`
+
+	queryGetBookingStatusCounts = `
+        SELECT status, COUNT(*)
+        FROM bookings
+        WHERE created_at >= $1 AND created_at <= $2
+        GROUP BY status`
+
+	queryGetTopResources = `
+        SELECT resource_id, COUNT(*) as count
+        FROM bookings
+        WHERE created_at >= $1 AND created_at <= $2
+        GROUP BY resource_id
+        ORDER BY count DESC
+        LIMIT 5`
 )

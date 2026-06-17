@@ -86,7 +86,7 @@ func TestCancel_FromConfirmed_PastStartDate_Error(t *testing.T) {
 		time.Now().AddDate(0, 0, -3),
 		time.Now().AddDate(0, 0, -1),
 		time.Now().AddDate(0, 0, -5),
-		time.Time{},
+		nil,
 	)
 
 	err := b.Cancel(time.Now())
@@ -139,7 +139,9 @@ func TestStartCancellation_FromAwaitsConfirmation_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, models.BookingStatusCancellationPending, booking.Status())
 	assert.Equal(t, models.BookingStatusAwaitsConfirmation, booking.PrevStatus())
-	assert.Equal(t, now, booking.CanceledAt())
+	if assert.NotNil(t, booking.CanceledAt()) {
+		assert.Equal(t, now, *booking.CanceledAt())
+	}
 }
 
 func TestStartCancellation_FromAwaitsConfirmation_InvalidStatus_Error(t *testing.T) {
@@ -159,7 +161,7 @@ func TestStartCancellation_FromConfirmed_PastStartDate_Error(t *testing.T) {
 		today.AddDate(0, 0, -3),
 		today.AddDate(0, 0, -1),
 		today.AddDate(0, 0, -5),
-		time.Time{},
+		nil,
 	)
 	err := booking.StartCancellation(today)
 	assert.ErrorIs(t, err, models.ErrCannotCancelPastBooking)

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -12,15 +13,18 @@ import (
 
 // BookingsQueries обрабатывает запросы (чтение данных) для бронирований.
 type BookingsQueries struct {
-	repo   models.BookingRepository
-	logger *zap.Logger
+	repo        models.BookingRepository
+	queriesRepo models.BookingQueriesRepository
+	logger      *zap.Logger
 }
 
 // NewBookingsQueries создаёт новый BookingsQueries.
 func NewBookingsQueries(repo models.BookingRepository, logger *zap.Logger) *BookingsQueries {
+	qRepo, _ := repo.(models.BookingQueriesRepository)
 	return &BookingsQueries{
-		repo:   repo,
-		logger: logger,
+		repo:        repo,
+		queriesRepo: qRepo,
+		logger:      logger,
 	}
 }
 
@@ -96,4 +100,51 @@ func mapBookingToResponse(b *models.Booking) dto.BookingResponse {
 		EndDate:    b.EndDate().Format(dto.DateFormat),
 		CreatedAt:  b.CreatedAt().Format("2006-01-02T15:04:05Z07:00"),
 	}
+}
+
+func (q *BookingsQueries) GetStatistics(ctx context.Context, req dto.BookingStatisticsRequest) (dto.BookingStatisticsResponse, error) {
+	if q.queriesRepo == nil {
+		return dto.BookingStatisticsResponse{}, fmt.Errorf("аналитический репозиторий не инициализирован")
+	}
+
+	const layout = "2006-01-02"
+	dateFrom, err := time.Parse(layout, req.DateFrom)
+	if err != nil {
+		return dto.BookingStatisticsResponse{}, fmt.Errorf("некорректный формат dateFrom: %w", err)
+	}
+
+	dateTo, err := time.Parse(layout, req.DateTo)
+	if err != nil {
+		return dto.BookingStatisticsResponse{}, fmt.Errorf("некорректный формат dateTo: %w", err)
+	}
+
+	dateTo = dateTo.Add(24*time.Hour - time.Nanosecond)
+
+	if dateTo.Before(dateFrom) {
+		return dto.BookingStatisticsResponse{}, fmt.Errorf("dateTo не может быть раньше dateFrom")
+	}
+
+	stats, err := q.queriesRepo.GetStatistics(ctx, dateFrom, dateTo)
+	if err != nil {
+		return dto.BookingStatisticsResponse{}, fmt.Errorf("сервис статистики: %w", err)
+	}
+
+	statusCounts := make(map[string]int64)
+	for status, count := range stats.StatusCounts {
+		statusCounts[string(status)] = count
+	}
+
+	topResources := make([]dto.TopResourceDTO, 0, len(stats.TopResources))
+	for _, res := range stats.TopResources {
+		topResources = append(topResources, dto.TopResourceDTO{
+			ResourceID:   res.ResourceID,
+			BookingCount: res.BookingCount,
+		})
+	}
+
+	return dto.BookingStatisticsResponse{
+		TotalCount:   stats.TotalCount,
+		StatusCounts: statusCounts,
+		TopResources: topResources,
+	}, nil
 }
