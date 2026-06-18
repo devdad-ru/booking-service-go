@@ -1,6 +1,9 @@
 package models
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // BookingRepository -- интерфейс репозитория бронирований.
 type BookingRepository interface {
@@ -19,6 +22,10 @@ type BookingRepository interface {
 	// GetAwaitingConfirmation возвращает бронирования в статусе AwaitsConfirmation
 	// с пессимистичной блокировкой (SELECT ... FOR UPDATE SKIP LOCKED).
 	GetAwaitingConfirmation(ctx context.Context, limit int) ([]Booking, error)
+
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	SaveAuditLog(ctx context.Context, log *BookingAuditLog) error
+	GetAuditLogsByBookingID(ctx context.Context, bookingID int64, page int, size int) ([]BookingAuditLog, int64, error)
 }
 
 // BookingFilter содержит параметры фильтрации и пагинации.
@@ -28,6 +35,22 @@ type BookingFilter struct {
 	Status     *BookingStatus
 	Page       int
 	Size       int
+}
+type TopResource struct {
+	ResourceID   int64 `json:"resourceId"`
+	BookingCount int64 `json:"bookingCount"`
+}
+
+// BookingStatistics содержит общую аналитику за период.
+type BookingStatistics struct {
+	TotalCount   int64                   `json:"totalCount"`
+	StatusCounts map[BookingStatus]int64 `json:"statusCounts"`
+	TopResources []TopResource           `json:"topResources"`
+}
+
+// BookingQueriesRepository — выделенный интерфейс для аналитических выборок (CQRS).
+type BookingQueriesRepository interface {
+	GetStatistics(ctx context.Context, dateFrom, dateTo time.Time) (*BookingStatistics, error)
 }
 
 // NewDefaultFilter создаёт фильтр с пагинацией по умолчанию.
