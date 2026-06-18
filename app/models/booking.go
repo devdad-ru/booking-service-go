@@ -75,11 +75,20 @@ func NewBooking(userID, resourceID int64, startDate, endDate time.Time) (*Bookin
 // Confirm подтверждает бронирование.
 // Допустимый переход: AwaitsConfirmation -> Confirmed.
 func (b *Booking) Confirm() error {
-	if b.status != BookingStatusAwaitsConfirmation {
+	switch b.status {
+	case BookingStatusAwaitsConfirmation:
+		b.status = BookingStatusConfirmed
+		return nil
+
+	case BookingStatusCancellationPending:
+		b.status = BookingStatusConfirmed
+		b.prevStatus = ""
+		b.canceledAt = nil
+		return nil
+
+	default:
 		return ErrInvalidStatusTransition
 	}
-	b.status = BookingStatusConfirmed
-	return nil
 }
 
 // Cancel отменяет бронирование.
