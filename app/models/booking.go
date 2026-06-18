@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 // BookingStatus представляет статус бронирования.
 type BookingStatus string

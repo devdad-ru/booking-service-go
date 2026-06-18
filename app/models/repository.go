@@ -22,6 +22,10 @@ type BookingRepository interface {
 	// GetAwaitingConfirmation возвращает бронирования в статусе AwaitsConfirmation
 	// с пессимистичной блокировкой (SELECT ... FOR UPDATE SKIP LOCKED).
 	GetAwaitingConfirmation(ctx context.Context, limit int) ([]Booking, error)
+
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	SaveAuditLog(ctx context.Context, log *BookingAuditLog) error
+	GetAuditLogsByBookingID(ctx context.Context, bookingID int64, page int, size int) ([]BookingAuditLog, int64, error)
 }
 
 // BookingFilter содержит параметры фильтрации и пагинации.

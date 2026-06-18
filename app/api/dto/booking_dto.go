@@ -70,5 +70,15 @@ type BookingStatisticsRequest struct {
 	DateTo   string
 }
 
+type BookingAuditLogResponse struct {
+	ID         int64  `json:"id"`
+	BookingID  int64  `json:"bookingId"`
+	FromStatus string `json:"fromStatus"`
+	ToStatus   string `json:"toStatus"`
+	ChangedAt  string `json:"changedAt"`
+	Initiator  string `json:"initiator"`
+	Reason     string `json:"reason"`
+}
+
 // DateFormat -- формат даты для JSON-сериализации.
 const DateFormat = "2006-01-02"

@@ -157,3 +157,30 @@ func (q *BookingsQueries) GetStatistics(ctx context.Context, req dto.BookingStat
 		TopResources: topResources,
 	}, nil
 }
+
+func (q *BookingsQueries) GetAuditLogs(ctx context.Context, bookingID int64, page, size int) (dto.PagedResponse[dto.BookingAuditLogResponse], error) {
+	domainLogs, totalCount, err := q.repo.GetAuditLogsByBookingID(ctx, bookingID, page, size)
+	if err != nil {
+		return dto.PagedResponse[dto.BookingAuditLogResponse]{}, fmt.Errorf("получение истории аудита из БД: %w", err)
+	}
+
+	items := make([]dto.BookingAuditLogResponse, 0, len(domainLogs))
+	for _, log := range domainLogs {
+		items = append(items, dto.BookingAuditLogResponse{
+			ID:         log.ID(),
+			BookingID:  log.BookingID(),
+			FromStatus: string(log.FromStatus()),
+			ToStatus:   string(log.ToStatus()),
+			ChangedAt:  log.ChangedAt().Format("2006-01-02T15:04:05Z07:00"),
+			Initiator:  log.Initiator(),
+			Reason:     log.Reason(),
+		})
+	}
+
+	return dto.PagedResponse[dto.BookingAuditLogResponse]{
+		Items:      items,
+		TotalCount: totalCount,
+		Page:       page,
+		Size:       size,
+	}, nil
+}

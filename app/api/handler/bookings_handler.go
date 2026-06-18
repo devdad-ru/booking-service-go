@@ -26,7 +26,8 @@ type BookingQueries interface {
 	GetByID(ctx context.Context, id int64) (dto.BookingResponse, error)
 	GetByFilter(ctx context.Context, req dto.GetBookingsByFilterRequest) (dto.PagedResponse[dto.BookingResponse], error)
 	GetStatus(ctx context.Context, id int64) (models.BookingStatus, error)
-	GetStatistics(ctx context.Context, req dto.BookingStatisticsRequest) (dto.BookingStatisticsResponse, error) // Наш новый метод
+	GetStatistics(ctx context.Context, req dto.BookingStatisticsRequest) (dto.BookingStatisticsResponse, error)
+	GetAuditLogs(ctx context.Context, bookingID int64, page, size int) (dto.PagedResponse[dto.BookingAuditLogResponse], error)
 }
 
 // BookingsHandler содержит обработчики HTTP-запросов для бронирований.
@@ -201,4 +202,37 @@ func (h *BookingsHandler) GetStatistics(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, stats)
+}
+
+func (h *BookingsHandler) GetAuditLogs(w http.ResponseWriter, r *http.Request) {
+	bookingID, err := parseIDParam(r)
+	if err != nil {
+		writeProblemDetails(w, http.StatusBadRequest, "Некорректный ID бронирования", err.Error())
+		return
+	}
+
+	pageStr := r.URL.Query().Get("page")
+	sizeStr := r.URL.Query().Get("size")
+
+	page := 1
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	size := 10
+	if sizeStr != "" {
+		if s, err := strconv.Atoi(sizeStr); err == nil && s > 0 {
+			size = s
+		}
+	}
+
+	result, err := h.queries.GetAuditLogs(r.Context(), bookingID, page, size)
+	if err != nil {
+		h.handleServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
 }
