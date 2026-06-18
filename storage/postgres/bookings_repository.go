@@ -305,9 +305,15 @@ func (r *BookingsRepository) SaveAuditLog(ctx context.Context, log *models.Booki
         INSERT INTO booking_audit_logs (booking_id, from_status, to_status, changed_at, initiator, reason)
         VALUES ($1, $2, $3, $4, $5, $6)`
 
+	var fromStatusPtr *string
+	if log.FromStatus() != "" {
+		str := string(log.FromStatus())
+		fromStatusPtr = &str
+	}
+
 	_, err := r.getExecutor(ctx).Exec(ctx, query,
 		log.BookingID(),
-		string(log.FromStatus()),
+		fromStatusPtr,
 		string(log.ToStatus()),
 		log.ChangedAt(),
 		log.Initiator(),
@@ -352,13 +358,19 @@ func (r *BookingsRepository) GetAuditLogsByBookingID(ctx context.Context, bookin
 	for rows.Next() {
 		var (
 			id, bID           int64
-			fromStr, toStr    string
+			fromStrPtr        *string // Наш nullable-указатель из базы
+			toStr             string
 			changedAt         time.Time
 			initiator, reason string
 		)
 
-		if err := rows.Scan(&id, &bID, &fromStr, &toStr, &changedAt, &initiator, &reason); err != nil {
+		if err := rows.Scan(&id, &bID, &fromStrPtr, &toStr, &changedAt, &initiator, &reason); err != nil {
 			return nil, 0, fmt.Errorf("сканирование лога аудита: %w", err)
+		}
+
+		var fromStr string
+		if fromStrPtr != nil {
+			fromStr = *fromStrPtr
 		}
 
 		log := models.RestoreBookingAuditLog(

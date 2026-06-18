@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -61,7 +62,7 @@ func (s *BookingsService) Create(ctx context.Context, req dto.CreateBookingReque
 			id,
 			"",
 			booking.Status(),
-			"User",
+			strconv.FormatInt(req.UserID, 10),
 			"Initial booking creation",
 		)
 

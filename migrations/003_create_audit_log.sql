@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS booking_audit_logs (
     id          BIGSERIAL    PRIMARY KEY,
     booking_id  BIGINT       NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-    from_status VARCHAR(50)  NOT NULL,
+    from_status VARCHAR(50),
     to_status   VARCHAR(50)  NOT NULL,
     changed_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     initiator   VARCHAR(100) NOT NULL,
